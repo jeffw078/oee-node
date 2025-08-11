@@ -1,5 +1,5 @@
 -- config/initial_data.sql - Dados iniciais
--- Usuário administrador padrão
+-- Usuário administrador padrão (senha: admin123)
 INSERT OR IGNORE INTO usuarios (username, password, email, nome_completo, tipo_usuario, ativo) VALUES 
 ('admin', '$2a$10$rOJx5Q5JZx.zGy6K6J6x1.i5K5Q5JZx.zGy6K6J6x1ui5K5Q5JZx.z', 'admin@empresa.com', 'Administrador', 'admin', 1);
 
@@ -9,10 +9,6 @@ INSERT OR IGNORE INTO usuarios (username, password, email, nome_completo, tipo_u
 ('qualidade.user', '$2a$10$rOJx5Q5JZx.zGy6K6J6x1.i5K5Q5JZx.zGy6K6J6x1ui5K5Q5JZx.z', 'qualidade@empresa.com', 'Usuário Qualidade', 'qualidade', 1),
 ('manutencao.user', '$2a$10$rOJx5Q5JZx.zGy6K6J6x1.i5K5Q5JZx.zGy6K6J6x1ui5K5Q5JZx.z', 'manutencao@empresa.com', 'Usuário Manutenção', 'manutencao', 1),
 ('alcionei.soldador', '$2a$10$rOJx5Q5JZx.zGy6K6J6x1.i5K5Q5JZx.zGy6K6J6x1ui5K5Q5JZx.z', 'alcionei@empresa.com', 'ALCIONEI', 'soldador', 1);
-
--- Soldadores de exemplo
-INSERT OR IGNORE INTO soldadores (usuario_id, senha_simplificada, ativo) VALUES 
-((SELECT id FROM usuarios WHERE username = 'alcionei.soldador'), '1234', 1);
 
 -- Módulos padrão
 INSERT OR IGNORE INTO modulos (nome, descricao, ordem_exibicao) VALUES 
@@ -55,6 +51,10 @@ INSERT OR IGNORE INTO tipos_defeito (nome, descricao, cor_exibicao) VALUES
 INSERT OR IGNORE INTO pedidos (numero, descricao, status) VALUES 
 ('5454', 'Pedido de produção exemplo', 'ativo'),
 ('5054', 'Pedido de produção exemplo 2', 'ativo');
+
+-- Soldadores de exemplo (após inserir usuários)
+INSERT OR IGNORE INTO soldadores (usuario_id, senha_simplificada, ativo) 
+SELECT id, '1234', 1 FROM usuarios WHERE username = 'alcionei.soldador';
 
 -- Configurações do sistema
 INSERT OR IGNORE INTO configuracao_sistema (chave, valor, descricao, tipo_dado) VALUES 

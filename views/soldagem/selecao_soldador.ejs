@@ -1,143 +1,300 @@
-<!-- views/soldagem/selecao_soldador.ejs -->
-<%- include('../layout', { title: 'Seleção de Soldador' }) %>
-
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white text-center">
-                    <h4 class="mb-0">👷‍♂️ Seleção de Soldador</h4>
-                    <p class="mb-0">Clique no seu nome para fazer login</p>
-                </div>
-                <div class="card-body">
-                    <div class="relogio-display">
-                        <span id="relogioSelecao"></span>
-                    </div>
-                    
-                    <div class="row">
-                        <% soldadores.forEach(soldador => { %>
-                            <div class="col-sm-6 col-md-4 mb-3">
-                                <button class="btn btn-modulo w-100" 
-                                        onclick="selecionarSoldador(<%= soldador.id %>, '<%= soldador.nome_completo %>')">
-                                    <%= soldador.nome_completo %>
-                                </button>
-                            </div>
-                        <% }) %>
-                    </div>
-                    
-                    <% if (soldadores.length === 0) { %>
-                        <div class="alert alert-warning text-center">
-                            <h5>⚠️ Nenhum soldador cadastrado</h5>
-                            <p>Entre em contato com o administrador do sistema.</p>
-                        </div>
-                    <% } %>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de senha -->
-<div class="modal fade" id="modalSenha" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">🔐 Digite sua senha</h5>
-            </div>
-            <div class="modal-body">
-                <p>Soldador: <strong id="nomeSoldadorSelecionado"></strong></p>
-                <div class="mb-3">
-                    <label for="senhaSoldador" class="form-label">Senha:</label>
-                    <input type="password" 
-                           class="form-control form-control-lg text-center" 
-                           id="senhaSoldador" 
-                           placeholder="Digite sua senha"
-                           maxlength="10"
-                           style="font-size: 1.5rem; letter-spacing: 3px;">
-                </div>
-                <div id="mensagemErro" class="alert alert-danger d-none"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="fazerLogin()">Entrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let soldadorSelecionadoId = null;
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleção de Soldador - Sistema OEE</title>
     
-    function selecionarSoldador(id, nome) {
-       soldadorSelecionadoId = id;
-       document.getElementById('nomeSoldadorSelecionado').textContent = nome;
-       document.getElementById('senhaSoldador').value = '';
-       document.getElementById('mensagemErro').classList.add('d-none');
-       
-       const modal = new bootstrap.Modal(document.getElementById('modalSenha'));
-       modal.show();
-       
-       // Focar no campo senha
-       setTimeout(() => {
-           document.getElementById('senhaSoldador').focus();
-       }, 500);
-   }
-   
-   function fazerLogin() {
-       const senha = document.getElementById('senhaSoldador').value;
-       const mensagemErro = document.getElementById('mensagemErro');
-       
-       if (!senha) {
-           mensagemErro.textContent = 'Digite sua senha';
-           mensagemErro.classList.remove('d-none');
-           return;
-       }
-       
-       mostrarLoading();
-       
-       fetch('/soldagem/login-soldador', {
-           method: 'POST',
-           headers: {
-               'Content-Type': 'application/json'
-           },
-           body: JSON.stringify({
-               soldador_id: soldadorSelecionadoId,
-               senha: senha
-           })
-       })
-       .then(response => response.json())
-       .then(data => {
-           esconderLoading();
-           
-           if (data.success) {
-               window.location.href = data.redirect;
-           } else {
-               mensagemErro.textContent = data.message;
-               mensagemErro.classList.remove('d-none');
-               document.getElementById('senhaSoldador').value = '';
-               document.getElementById('senhaSoldador').focus();
-           }
-       })
-       .catch(error => {
-           esconderLoading();
-           mensagemErro.textContent = 'Erro de conexão. Tente novamente.';
-           mensagemErro.classList.remove('d-none');
-       });
-   }
-   
-   // Enter para fazer login
-   document.addEventListener('DOMContentLoaded', function() {
-       document.getElementById('senhaSoldador').addEventListener('keypress', function(e) {
-           if (e.key === 'Enter') {
-               fazerLogin();
-           }
-       });
-       
-       // Atualizar relógio
-       function atualizarRelogio() {
-           document.getElementById('relogioSelecao').textContent = moment().format('HH:mm:ss');
-       }
-       setInterval(atualizarRelogio, 1000);
-       atualizarRelogio();
-   });
-</script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f8f9fa; 
+        }
+        .header-sistema { 
+            background: linear-gradient(135deg, #dc3545, #c82333); 
+            color: white; 
+            padding: 1rem 0; 
+            position: relative; 
+        }
+        .logo-empresa { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .status-conexao { 
+            position: absolute; 
+            top: 15px; 
+            right: 20px; 
+        }
+        .status-online { 
+            background-color: #28a745; 
+            color: white; 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+        }
+        .relogio-display { 
+            font-size: 2.5rem; 
+            font-weight: bold; 
+            color: #dc3545; 
+            text-align: center; 
+            margin: 20px 0; 
+        }
+        .btn-soldador { 
+            background: linear-gradient(135deg, #dc3545, #c82333); 
+            color: white; 
+            border: none; 
+            border-radius: 15px; 
+            height: 120px; 
+            font-size: 1.4rem; 
+            font-weight: bold; 
+            transition: all 0.3s ease; 
+        }
+        .btn-soldador:hover { 
+            transform: translateY(-3px); 
+            color: white; 
+            background: linear-gradient(135deg, #c82333, #dc3545); 
+        }
+        .spinner { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #dc3545; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+            margin: 20px auto; 
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+    </style>
+</head>
+<body>
+    <header class="header-sistema">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <div class="logo-empresa">
+                        <div style="background: white; color: #dc3545; padding: 5px 10px; border-radius: 5px; font-weight: bold;">
+                            SteelMast
+                        </div>
+                        <h3 class="mb-0">Sistema de Apontamento OEE</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="status-conexao">
+                <div class="status-online">● Online</div>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container mt-4">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h4 class="mb-0">👷‍♂️ Seleção de Soldador</h4>
+                            <p class="mb-0">Clique no seu nome para fazer login</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="relogio-display">
+                                <span id="relogioSelecao"></span>
+                            </div>
+                            
+                            <div class="row">
+                                <% soldadores.forEach(soldador => { %>
+                                    <div class="col-sm-6 col-md-4 mb-3">
+                                        <button class="btn btn-soldador w-100" 
+                                                data-soldador-id="<%= soldador.id %>"
+                                                data-soldador-nome="<%= soldador.nome_completo %>">
+                                            <%= soldador.nome_completo %>
+                                        </button>
+                                    </div>
+                                <% }) %>
+                            </div>
+                            
+                            <% if (soldadores.length === 0) { %>
+                                <div class="alert alert-warning text-center">
+                                    <h5>⚠️ Nenhum soldador cadastrado</h5>
+                                    <p>Entre em contato com o administrador do sistema.</p>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de senha -->
+        <div class="modal fade" id="modalSenha" tabindex="-1" aria-labelledby="modalSenhaLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="modalSenhaLabel">🔐 Digite sua senha</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Soldador: <strong id="nomeSoldadorSelecionado"></strong></p>
+                        <div class="mb-3">
+                            <label for="senhaSoldador" class="form-label">Senha:</label>
+                            <input type="password" 
+                                   class="form-control form-control-lg text-center" 
+                                   id="senhaSoldador" 
+                                   placeholder="Digite sua senha"
+                                   maxlength="10"
+                                   style="font-size: 1.5rem; letter-spacing: 3px;">
+                        </div>
+                        <div id="mensagemErro" class="alert alert-danger d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btnFazerLogin">Entrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let soldadorSelecionadoId = null;
+        let modalSenha = null;
+        
+        // Inicializar componentes quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM carregado - Sistema OEE');
+            
+            // Inicializar modal
+            modalSenha = new bootstrap.Modal(document.getElementById('modalSenha'));
+            console.log('Modal inicializado');
+            
+            // Event listeners para os botões de soldador
+            document.querySelectorAll('.btn-soldador').forEach(button => {
+                button.addEventListener('click', function() {
+                    const id = this.getAttribute('data-soldador-id');
+                    const nome = this.getAttribute('data-soldador-nome');
+                    selecionarSoldador(id, nome);
+                });
+            });
+            console.log('Event listeners dos soldadores configurados');
+            
+            // Event listener para Enter no campo senha
+            document.getElementById('senhaSoldador').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    fazerLogin();
+                }
+            });
+            
+            // Event listener para o botão de login
+            document.getElementById('btnFazerLogin').addEventListener('click', fazerLogin);
+            
+            // Atualizar relógio
+            function atualizarRelogio() {
+                const agora = new Date();
+                document.getElementById('relogioSelecao').textContent = agora.toLocaleTimeString('pt-BR');
+            }
+            setInterval(atualizarRelogio, 1000);
+            atualizarRelogio();
+            
+            console.log('Sistema inicializado com sucesso');
+        });
+        
+        function mostrarLoading() {
+            const loading = document.createElement('div');
+            loading.innerHTML = '<div class="spinner"></div>';
+            loading.style.position = 'fixed';
+            loading.style.top = '0';
+            loading.style.left = '0';
+            loading.style.width = '100%';
+            loading.style.height = '100%';
+            loading.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            loading.style.zIndex = '9999';
+            loading.style.display = 'flex';
+            loading.style.alignItems = 'center';
+            loading.style.justifyContent = 'center';
+            loading.id = 'loadingOverlay';
+            document.body.appendChild(loading);
+        }
+        
+        function esconderLoading() {
+            const loading = document.getElementById('loadingOverlay');
+            if (loading) loading.remove();
+        }
+        
+        function selecionarSoldador(id, nome) {
+            console.log('Soldador selecionado:', id, nome);
+            
+            soldadorSelecionadoId = id;
+            document.getElementById('nomeSoldadorSelecionado').textContent = nome;
+            document.getElementById('senhaSoldador').value = '';
+            document.getElementById('mensagemErro').classList.add('d-none');
+            
+            // Mostrar modal
+            modalSenha.show();
+            console.log('Modal aberto');
+            
+            // Focar no campo senha após um pequeno delay
+            setTimeout(() => {
+                document.getElementById('senhaSoldador').focus();
+            }, 500);
+        }
+        
+        function fazerLogin() {
+            const senha = document.getElementById('senhaSoldador').value;
+            const mensagemErro = document.getElementById('mensagemErro');
+            
+            console.log('Tentativa de login:', soldadorSelecionadoId, senha ? 'senha fornecida' : 'sem senha');
+            
+            if (!senha) {
+                mensagemErro.textContent = 'Digite sua senha';
+                mensagemErro.classList.remove('d-none');
+                return;
+            }
+            
+            mostrarLoading();
+            
+            fetch('/soldagem/login-soldador', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    soldador_id: soldadorSelecionadoId,
+                    senha: senha
+                })
+            })
+            .then(response => {
+                console.log('Resposta recebida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Dados recebidos:', data);
+                esconderLoading();
+                
+                if (data.success) {
+                    console.log('Login bem-sucedido, redirecionando...');
+                    window.location.href = data.redirect;
+                } else {
+                    mensagemErro.textContent = data.message;
+                    mensagemErro.classList.remove('d-none');
+                    document.getElementById('senhaSoldador').value = '';
+                    document.getElementById('senhaSoldador').focus();
+                }
+            })
+            .catch(error => {
+                console.error('Erro na requisição:', error);
+                esconderLoading();
+                mensagemErro.textContent = 'Erro de conexão. Tente novamente.';
+                mensagemErro.classList.remove('d-none');
+            });
+        }
+        
+        console.log('Script carregado');
+    </script>
+</body>
+</html>

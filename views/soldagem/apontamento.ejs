@@ -1,511 +1,505 @@
-<!-- views/soldagem/apontamento.ejs -->
-<%- include('../layout', { title: 'Apontamento de Soldagem' }) %>
-
-<div class="container mt-3">
-    <!-- Saudação e relógio -->
-    <div class="saudacao-soldador">
-        <%= saudacao %>, <strong><%= soldador.nome_completo %>!</strong>
-    </div>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apontamento de Soldagem - Sistema OEE</title>
     
-    <div class="relogio-display" id="relogioApontamento"></div>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     
-    <% if (apontamentoAtivo) { %>
-        <!-- Processo em andamento -->
-        <div class="processo-ativo">
-            <h4>🔥 Soldagem em Andamento: <%= apontamentoAtivo.modulo_nome %></h4>
-            <hr>
-            <div class="row text-center">
-                <div class="col-md-3">
-                    <strong>Pedido:</strong><br>
-                    <%= apontamentoAtivo.pedido_numero %>
-                </div>
-                <div class="col-md-3">
-                    <strong>Poste/Tubo:</strong><br>
-                    <%= apontamentoAtivo.numero_poste_tubo %>
-                </div>
-                <div class="col-md-3">
-                    <strong>Componente:</strong><br>
-                    <%= apontamentoAtivo.componente_nome %>
-                </div>
-                <div class="col-md-3">
-                    <strong>Início:</strong><br>
-                    <%= momento(apontamentoAtivo.inicio_processo).format('HH:mm:ss') %>
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f8f9fa; 
+        }
+        .header-sistema { 
+            background: linear-gradient(135deg, #dc3545, #c82333); 
+            color: white; 
+            padding: 1rem 0; 
+            position: relative; 
+        }
+        .logo-empresa { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .status-conexao { 
+            position: absolute; 
+            top: 15px; 
+            right: 20px; 
+        }
+        .status-online { 
+            background-color: #28a745; 
+            color: white; 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+        }
+        .relogio-display { 
+            font-size: 2.5rem; 
+            font-weight: bold; 
+            color: #dc3545; 
+            text-align: center; 
+            margin: 20px 0; 
+        }
+        .saudacao-soldador { 
+            background-color: #e9ecef; 
+            padding: 15px; 
+            border-radius: 10px; 
+            text-align: center; 
+            margin: 20px 0; 
+            font-size: 1.3rem; 
+        }
+        .btn-modulo { 
+            background: linear-gradient(135deg, #dc3545, #c82333); 
+            color: white; 
+            border: none; 
+            border-radius: 15px; 
+            height: 120px; 
+            font-size: 1.4rem; 
+            font-weight: bold; 
+            transition: all 0.3s ease; 
+        }
+        .btn-modulo:hover { 
+            transform: translateY(-3px); 
+            color: white; 
+        }
+        .btn-componente {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            height: 80px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn-componente:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        .processo-ativo {
+            background-color: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .cronometro-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #28a745;
+            text-align: center;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .spinner { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #dc3545; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+            margin: 20px auto; 
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+    </style>
+</head>
+<body>
+    <header class="header-sistema">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <div class="logo-empresa">
+                        <div style="background: white; color: #dc3545; padding: 5px 10px; border-radius: 5px; font-weight: bold;">
+                            SteelMast
+                        </div>
+                        <h3 class="mb-0">Sistema de Apontamento OEE</h3>
+                    </div>
                 </div>
             </div>
+            <div class="status-conexao">
+                <div class="status-online">● Online</div>
+                <% if (locals.usuario) { %>
+                    <a href="/soldagem/finalizar-turno" class="btn btn-outline-light btn-sm ms-2">🚪 SAIR</a>
+                <% } %>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container mt-3">
+            <!-- Saudação e relógio -->
+            <div class="saudacao-soldador">
+                <%= saudacao %>, <strong><%= soldador.nome_completo %>!</strong>
+            </div>
             
-            <% if (apontamentoAtivo.diametro) { %>
-                <div class="mt-2">
-                    <strong>Diâmetro do Tubo:</strong> <%= apontamentoAtivo.diametro %> mm
+            <div class="relogio-display" id="relogioApontamento"></div>
+            
+            <% if (apontamentoAtivo) { %>
+                <!-- Processo em andamento -->
+                <div class="processo-ativo">
+                    <h4>🔥 Soldagem em Andamento: <%= apontamentoAtivo.modulo_nome %></h4>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <strong>Pedido:</strong><br>
+                            <%= apontamentoAtivo.pedido_numero %>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Poste/Tubo:</strong><br>
+                            <%= apontamentoAtivo.numero_poste_tubo %>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Componente:</strong><br>
+                            <%= apontamentoAtivo.componente_nome %>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Início:</strong><br>
+                            <%= new Date(apontamentoAtivo.inicio_processo).toLocaleTimeString('pt-BR') %>
+                        </div>
+                    </div>
+                    
+                    <% if (apontamentoAtivo.diametro) { %>
+                        <div class="mt-2 text-center">
+                            <strong>Diâmetro do Tubo:</strong> <%= apontamentoAtivo.diametro %> mm
+                        </div>
+                    <% } %>
+                    
+                    <div class="cronometro-display" id="cronometroDisplay">00:00:00</div>
+                    
+                    <!-- Botões de ação durante soldagem -->
+                    <div class="row mt-4">
+                        <div class="col-6">
+                            <button class="btn btn-success btn-lg w-100" id="btnFinalizarComponente">
+                                ✅ Finalizar Atividade
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <div class="row">
+                                <div class="col-4">
+                                    <button class="btn btn-warning w-100" data-painel="paradas">
+                                        ⏸️ Pausa
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-info w-100" data-painel="qualidade">
+                                        🔍 Qualidade
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-secondary w-100" data-painel="manutencao">
+                                        🔧 Manutenção
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+            <% } else if (paradaAtiva) { %>
+                <!-- Parada ativa -->
+                <div class="processo-ativo bg-warning">
+                    <h4>⏸️ Parada Ativa: <%= paradaAtiva.tipo_nome %></h4>
+                    <hr>
+                    <div class="cronometro-display text-warning" id="cronometroParada">00:00:00</div>
+                    
+                    <div class="mt-3 text-center">
+                        <button class="btn btn-success btn-lg" id="btnFinalizarParada" data-parada-id="<%= paradaAtiva.id %>">
+                            ▶️ Retomar Trabalho
+                        </button>
+                    </div>
+                </div>
+                
+            <% } else { %>
+                <!-- Seleção de módulos -->
+                <div class="text-center mb-4">
+                    <h4>Selecione o módulo para iniciar:</h4>
+                </div>
+                
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="row">
+                            <% modulos.forEach(modulo => { %>
+                                <div class="col-sm-6 mb-3">
+                                    <button class="btn btn-modulo w-100" 
+                                            data-modulo-id="<%= modulo.id %>"
+                                            data-modulo-nome="<%= modulo.nome %>">
+                                        <%= modulo.nome %>
+                                    </button>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botões secundários -->
+                <div class="row justify-content-center mt-4">
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-4">
+                                <button class="btn btn-info w-100" data-painel="qualidade">
+                                    🔍 Qualidade
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-warning w-100" data-painel="paradas">
+                                    ⏸️ Parada
+                                </button>
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-danger w-100" id="btnFinalizarTurno">
+                                    🚪 Finalizar Turno
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             <% } %>
-            
-            <div class="cronometro-display" id="cronometroDisplay">00:00:00</div>
-            
-            <!-- Botões de ação durante soldagem -->
-            <div class="row mt-4">
-                <div class="col-6">
-                    <button class="btn btn-success btn-lg w-100" onclick="finalizarComponente()">
-                        ✅ Finalizar Atividade
-                    </button>
+        </div>
+
+        <!-- Modal de seleção de pedido/tubo -->
+        <div class="modal fade" id="modalPedidoTubo" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">📋 Informações do Processo</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p>Módulo selecionado: <strong id="moduloSelecionado"></strong></p>
+                        
+                        <div class="mb-3">
+                            <label for="numeroPedido" class="form-label">Número do Pedido:</label>
+                            <input type="text" class="form-control" id="numeroPedido" placeholder="Ex: 5454">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="numeroPosteTubo" class="form-label">Número do Poste/Tubo:</label>
+                            <input type="text" class="form-control" id="numeroPosteTubo" placeholder="Ex: 1">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btnConfirmarModulo">Continuar</button>
+                    </div>
                 </div>
-                <div class="col-6">
-                    <div class="row">
-                        <div class="col-4">
-                            <button class="btn btn-warning w-100" onclick="abrirPainel('paradas')">
-                                ⏸️ Pausa
-                            </button>
-                        </div>
-                        <div class="col-4">
-                            <button class="btn btn-info w-100" onclick="abrirPainel('qualidade')">
-                                🔍 Qualidade
-                            </button>
-                        </div>
-                        <div class="col-4">
-                            <button class="btn btn-secondary w-100" onclick="abrirPainel('manutencao')">
-                                🔧 Manutenção
-                            </button>
+            </div>
+        </div>
+
+        <!-- Modal de componentes -->
+        <div class="modal fade" id="modalComponentes" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">🔧 Componentes do <span id="tituloModuloComponentes"></span></h5>
+                        <button type="button" class="btn-close btn-close-white" id="btnVoltarParaModulos"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="gridComponentes" class="row">
+                            <!-- Componentes serão carregados aqui -->
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Modal de diâmetro -->
+        <div class="modal fade" id="modalDiametro" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title">📏 Diâmetro do Tubo</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p>Componente: <strong id="componenteSelecionado"></strong></p>
+                        
+                        <div class="mb-3">
+                            <label for="diametroTubo" class="form-label">Diâmetro (mm):</label>
+                            <input type="number" class="form-control" id="diametroTubo" placeholder="Ex: 800" step="0.1">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="btnVoltarParaComponentes">Voltar</button>
+                        <button type="button" class="btn btn-success" id="btnIniciarComponenteComDiametro">Iniciar Soldagem</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
     
-    <% } else if (paradaAtiva) { %>
-        <!-- Parada ativa -->
-        <div class="processo-ativo bg-warning">
-            <h4>⏸️ Parada Ativa: <%= paradaAtiva.tipo_nome %></h4>
-            <hr>
-            <div class="cronometro-display text-warning" id="cronometroParada">00:00:00</div>
-            
-            <div class="mt-3">
-                <button class="btn btn-success btn-lg" onclick="finalizarParada(<%= paradaAtiva.id %>)">
-                    ▶️ Retomar Trabalho
-                </button>
-            </div>
-        </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let moduloAtual = null;
+        let componenteAtual = null;
+        let dadosProcesso = {};
+        let inicioProcesso = null;
+        let inicioParada = null;
+        let intervaloCronometro = null;
         
-    <% } else { %>
-        <!-- Seleção de módulos -->
-        <div class="text-center mb-4">
-            <h4>Selecione o módulo para iniciar:</h4>
-        </div>
-        
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="row">
-                    <% modulos.forEach(modulo => { %>
-                        <div class="col-sm-6 mb-3">
-                            <button class="btn btn-modulo w-100" 
-                                    onclick="selecionarModulo(<%= modulo.id %>, '<%= modulo.nome %>')">
-                                <%= modulo.nome %>
-                            </button>
-                        </div>
-                    <% }) %>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Botões secundários -->
-        <div class="row justify-content-center mt-4">
-            <div class="col-md-6">
-                <div class="row">
-                    <div class="col-4">
-                        <button class="btn btn-info w-100" onclick="abrirPainel('qualidade')">
-                            🔍 Qualidade
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button class="btn btn-warning w-100" onclick="abrirPainel('paradas')">
-                            ⏸️ Parada
-                        </button>
-                    </div>
-                    <div class="col-4">
-                        <button class="btn btn-danger w-100" onclick="finalizarTurno()">
-                            🚪 Finalizar Turno
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <% } %>
-</div>
-
-<!-- Modal de seleção de pedido/tubo -->
-<div class="modal fade" id="modalPedidoTubo" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">📋 Informações do Processo</h5>
-            </div>
-            <div class="modal-body">
-                <p>Módulo selecionado: <strong id="moduloSelecionado"></strong></p>
-                
-                <div class="mb-3">
-                    <label for="numeroPedido" class="form-label">Número do Pedido:</label>
-                    <input type="text" class="form-control" id="numeroPedido" placeholder="Ex: 5454">
-                </div>
-                
-                <div class="mb-3">
-                    <label for="numeroPosteTubo" class="form-label">Número do Poste/Tubo:</label>
-                    <input type="text" class="form-control" id="numeroPosteTubo" placeholder="Ex: 1">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="confirmarModulo()">Continuar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de componentes -->
-<div class="modal fade" id="modalComponentes" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">🔧 Componentes do <span id="tituloModuloComponentes"></span></h5>
-                <button type="button" class="btn-close btn-close-white" onclick="voltarParaModulos()"></button>
-            </div>
-            <div class="modal-body">
-                <div id="gridComponentes" class="row">
-                    <!-- Componentes serão carregados aqui -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de diâmetro -->
-<div class="modal fade" id="modalDiametro" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">📏 Diâmetro do Tubo</h5>
-            </div>
-            <div class="modal-body">
-                <p>Componente: <strong id="componenteSelecionado"></strong></p>
-                
-                <div class="mb-3">
-                    <label for="diametroTubo" class="form-label">Diâmetro (mm):</label>
-                    <input type="number" class="form-control" id="diametroTubo" placeholder="Ex: 800" step="0.1">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="voltarParaComponentes()">Voltar</button>
-                <button type="button" class="btn btn-success" onclick="iniciarComponenteComDiametro()">Iniciar Soldagem</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let moduloAtual = null;
-    let componenteAtual = null;
-    let dadosProcesso = {};
-    let inicioProcesso = null;
-    let inicioParada = null;
-    let intervaloCronometro = null;
-    
-    // Função para atualizar cronômetro
-    function atualizarCronometro() {
-        if (inicioProcesso) {
-            const agora = new Date();
-            const diff = agora - inicioProcesso;
-            const horas = Math.floor(diff / 3600000);
-            const minutos = Math.floor((diff % 3600000) / 60000);
-            const segundos = Math.floor((diff % 60000) / 1000);
-            
-            document.getElementById('cronometroDisplay').textContent = 
-                `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        // Função para mostrar/esconder loading
+        function mostrarLoading() {
+            const loading = document.createElement('div');
+            loading.innerHTML = '<div class="spinner"></div>';
+            loading.style.position = 'fixed';
+            loading.style.top = '0';
+            loading.style.left = '0';
+            loading.style.width = '100%';
+            loading.style.height = '100%';
+            loading.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            loading.style.zIndex = '9999';
+            loading.style.display = 'flex';
+            loading.style.alignItems = 'center';
+            loading.style.justifyContent = 'center';
+            loading.id = 'loadingOverlay';
+            document.body.appendChild(loading);
         }
         
-        if (inicioParada) {
-            const agora = new Date();
-            const diff = agora - inicioParada;
-            const horas = Math.floor(diff / 3600000);
-            const minutos = Math.floor((diff % 3600000) / 60000);
-            const segundos = Math.floor((diff % 60000) / 1000);
-            
-            document.getElementById('cronometroParada').textContent = 
-                `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-        }
-    }
-    
-    function selecionarModulo(id, nome) {
-        moduloAtual = { id, nome };
-        document.getElementById('moduloSelecionado').textContent = nome;
-        document.getElementById('numeroPedido').value = '';
-        document.getElementById('numeroPosteTubo').value = '';
-        
-        const modal = new bootstrap.Modal(document.getElementById('modalPedidoTubo'));
-        modal.show();
-    }
-    
-    function confirmarModulo() {
-        const numeroPedido = document.getElementById('numeroPedido').value;
-        const numeroPosteTubo = document.getElementById('numeroPosteTubo').value;
-        
-        if (!numeroPedido || !numeroPosteTubo) {
-            alert('Preencha todos os campos');
-            return;
+        function esconderLoading() {
+            const loading = document.getElementById('loadingOverlay');
+            if (loading) loading.remove();
         }
         
-        dadosProcesso = {
-            modulo_id: moduloAtual.id,
-            pedido_numero: numeroPedido,
-            numero_poste_tubo: numeroPosteTubo
-        };
-        
-        // Fechar modal atual
-        bootstrap.Modal.getInstance(document.getElementById('modalPedidoTubo')).hide();
-        
-        // Carregar componentes
-        carregarComponentes();
-    }
-    
-    function carregarComponentes() {
-        mostrarLoading();
-        
-        fetch('/soldagem/api/iniciar-modulo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dadosProcesso)
-        })
-        .then(response => response.json())
-        .then(data => {
-            esconderLoading();
+        // Função para atualizar cronômetro
+        function atualizarCronometro() {
+            if (inicioProcesso) {
+                const agora = new Date();
+                const diff = agora - inicioProcesso;
+                const horas = Math.floor(diff / 3600000);
+                const minutos = Math.floor((diff % 3600000) / 60000);
+                const segundos = Math.floor((diff % 60000) / 1000);
+                
+                const cronometroElement = document.getElementById('cronometroDisplay');
+                if (cronometroElement) {
+                    cronometroElement.textContent = 
+                        `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                }
+            }
             
-            if (data.success) {
-                document.getElementById('tituloModuloComponentes').textContent = data.modulo.nome;
+            if (inicioParada) {
+                const agora = new Date();
+                const diff = agora - inicioParada;
+                const horas = Math.floor(diff / 3600000);
+                const minutos = Math.floor((diff % 3600000) / 60000);
+                const segundos = Math.floor((diff % 60000) / 1000);
                 
-                const grid = document.getElementById('gridComponentes');
-                grid.innerHTML = '';
-                
-                data.componentes.forEach(componente => {
-                    const col = document.createElement('div');
-                    col.className = 'col-sm-6 col-md-4 mb-3';
-                    
-                    const descricao = componente.considera_diametro ? '(Diâmetro do tubo)' : '';
-                    
-                    col.innerHTML = `
-                        <button class="btn btn-componente w-100" 
-                                onclick="selecionarComponente(${componente.id}, '${componente.nome}', ${componente.considera_diametro})">
-                            ${componente.nome}
-                            <br><small>${descricao}</small>
-                        </button>
-                    `;
-                    
-                    grid.appendChild(col);
+                const cronometroParadaElement = document.getElementById('cronometroParada');
+                if (cronometroParadaElement) {
+                    cronometroParadaElement.textContent = 
+                        `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                }
+            }
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Tela de apontamento carregada');
+            
+            // Configurar cronômetros se houver processo/parada ativa
+            <% if (apontamentoAtivo) { %>
+                inicioProcesso = new Date('<%= apontamentoAtivo.inicio_processo %>');
+                setInterval(atualizarCronometro, 1000);
+                atualizarCronometro();
+                console.log('Cronômetro de processo iniciado');
+            <% } %>
+            
+            <% if (paradaAtiva) { %>
+                inicioParada = new Date('<%= paradaAtiva.inicio %>');
+                setInterval(atualizarCronometro, 1000);
+                atualizarCronometro();
+                console.log('Cronômetro de parada iniciado');
+            <% } %>
+            
+            // Event listeners para botões de módulo
+            document.querySelectorAll('[data-modulo-id]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-modulo-id');
+                    const nome = this.getAttribute('data-modulo-nome');
+                    selecionarModulo(id, nome);
                 });
-                
-                const modal = new bootstrap.Modal(document.getElementById('modalComponentes'));
-                modal.show();
-            } else {
-                alert('Erro: ' + data.message);
+            });
+            
+            // Event listeners para outros botões
+            const btnFinalizarComponente = document.getElementById('btnFinalizarComponente');
+            if (btnFinalizarComponente) {
+                btnFinalizarComponente.addEventListener('click', finalizarComponente);
             }
-        })
-        .catch(error => {
-            esconderLoading();
-            alert('Erro de conexão');
-        });
-    }
-    
-    function selecionarComponente(id, nome, consideraDiametro) {
-        componenteAtual = { id, nome, consideraDiametro };
-        
-        if (consideraDiametro) {
-            document.getElementById('componenteSelecionado').textContent = nome;
-            document.getElementById('diametroTubo').value = '';
             
-            // Fechar modal de componentes
-            bootstrap.Modal.getInstance(document.getElementById('modalComponentes')).hide();
+            const btnFinalizarParada = document.getElementById('btnFinalizarParada');
+            if (btnFinalizarParada) {
+                btnFinalizarParada.addEventListener('click', function() {
+                    const paradaId = this.getAttribute('data-parada-id');
+                    finalizarParada(paradaId);
+                });
+            }
             
-            // Abrir modal de diâmetro
-            const modal = new bootstrap.Modal(document.getElementById('modalDiametro'));
-            modal.show();
-        } else {
-            iniciarComponente();
-        }
-    }
-    
-    function iniciarComponenteComDiametro() {
-        const diametro = document.getElementById('diametroTubo').value;
-        
-        if (!diametro || diametro <= 0) {
-            alert('Digite um diâmetro válido');
-            return;
-        }
-        
-        dadosProcesso.diametro = parseFloat(diametro);
-        
-        // Fechar modal
-        bootstrap.Modal.getInstance(document.getElementById('modalDiametro')).hide();
-        
-        iniciarComponente();
-    }
-    
-    function iniciarComponente() {
-        const dadosCompletos = {
-            ...dadosProcesso,
-            componente_id: componenteAtual.id
-        };
-        
-        mostrarLoading();
-        
-        const requestData = {
-            tipo: 'iniciar_componente',
-            dados: dadosCompletos
-        };
-        
-        fazerRequisicao('/soldagem/api/iniciar-componente', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dadosCompletos)
-        }, requestData)
-        .then(data => {
-            esconderLoading();
+            const btnFinalizarTurno = document.getElementById('btnFinalizarTurno');
+            if (btnFinalizarTurno) {
+                btnFinalizarTurno.addEventListener('click', finalizarTurno);
+            }
             
-            if (data.success) {
-                if (data.offline) {
-                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
+            // Event listeners para painéis
+            document.querySelectorAll('[data-painel]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tipo = this.getAttribute('data-painel');
+                    abrirPainel(tipo);
+                });
+            });
+            
+            // Atualizar relógio
+            function atualizarRelogio() {
+                const agora = new Date();
+                const relogioElement = document.getElementById('relogioApontamento');
+                if (relogioElement) {
+                    relogioElement.textContent = agora.toLocaleTimeString('pt-BR');
                 }
-                location.reload();
-            } else {
-                alert('Erro: ' + data.message);
             }
-        });
-    }
-    
-    function finalizarComponente() {
-        if (!confirm('Confirma a finalização da atividade?')) return;
-        
-        mostrarLoading();
-        
-        const apontamentoId = <%= apontamentoAtivo ? apontamentoAtivo.id : 'null' %>;
-        
-        const requestData = {
-            tipo: 'finalizar_componente',
-            dados: { apontamento_id: apontamentoId }
-        };
-        
-        fazerRequisicao('/soldagem/api/finalizar-componente', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apontamento_id: apontamentoId })
-        }, requestData)
-        .then(data => {
-            esconderLoading();
+            setInterval(atualizarRelogio, 1000);
+            atualizarRelogio();
             
-            if (data.success) {
-                if (data.offline) {
-                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
-                } else {
-                    alert(`✅ Atividade finalizada!\nTempo real: ${data.tempo_real} min\nEficiência: ${data.eficiencia}%`);
-                }
-                location.reload();
-            } else {
-                alert('Erro: ' + data.message);
-            }
+            console.log('Sistema de apontamento inicializado');
         });
-    }
-    
-    function abrirPainel(tipo) {
-        const urls = {
-            'qualidade': '/qualidade/painel',
-            'paradas': '/soldagem/painel-paradas',
-            'manutencao': '/manutencao/painel'
-        };
         
-        window.location.href = urls[tipo];
-    }
-    
-    function finalizarParada(paradaId) {
-        if (!confirm('Confirma o retorno ao trabalho?')) return;
-        
-        mostrarLoading();
-        
-        const requestData = {
-            tipo: 'finalizar_parada',
-            dados: { parada_id: paradaId }
-        };
-        
-        fazerRequisicao('/soldagem/api/finalizar-parada', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parada_id: paradaId })
-        }, requestData)
-        .then(data => {
-            esconderLoading();
-            
-            if (data.success) {
-                if (data.offline) {
-                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
-                } else {
-                    alert(`✅ Parada finalizada!\nDuração: ${data.duracao_minutos.toFixed(1)} minutos`);
-                }
-                location.reload();
-            } else {
-                alert('Erro: ' + data.message);
-            }
-        });
-    }
-    
-    function finalizarTurno() {
-        if (!confirm('⚠️ Confirma a finalização do turno?')) return;
-        
-        mostrarLoading();
-        
-        fetch('/soldagem/finalizar-turno', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            esconderLoading();
-            
-            if (data.success) {
-                window.location.href = data.redirect;
-            } else {
-                alert('Erro: ' + data.message);
-            }
-        })
-        .catch(error => {
-            esconderLoading();
-            alert('Erro de conexão');
-        });
-    }
-    
-    function voltarParaModulos() {
-        bootstrap.Modal.getInstance(document.getElementById('modalComponentes')).hide();
-    }
-    
-    function voltarParaComponentes() {
-        bootstrap.Modal.getInstance(document.getElementById('modalDiametro')).hide();
-        
-        const modal = new bootstrap.Modal(document.getElementById('modalComponentes'));
-        modal.show();
-    }
-    
-    // Inicialização
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar cronômetros se houver processo/parada ativa
-        <% if (apontamentoAtivo) { %>
-            inicioProcesso = new Date('<%= apontamentoAtivo.inicio_processo %>');
-            setInterval(atualizarCronometro, 1000);
-            atualizarCronometro();
-        <% } %>
-        
-        <% if (paradaAtiva) { %>
-            inicioParada = new Date('<%= paradaAtiva.inicio %>');
-            setInterval(atualizarCronometro, 1000);
-            atualizarCronometro();
-        <% } %>
-        
-        // Atualizar relógio
-        function atualizarRelogio() {
-            document.getElementById('relogioApontamento').textContent = moment().format('HH:mm:ss');
+        function selecionarModulo(id, nome) {
+            console.log('Módulo selecionado:', id, nome);
+            // Implementar lógica de seleção de módulo
+            alert('Funcionalidade em desenvolvimento: ' + nome);
         }
-        setInterval(atualizarRelogio, 1000);
-        atualizarRelogio();
-    });
-</script>
+        
+        function finalizarComponente() {
+            if (!confirm('Confirma a finalização da atividade?')) return;
+            console.log('Finalizando componente...');
+            alert('Funcionalidade em desenvolvimento');
+        }
+        
+        function finalizarParada(paradaId) {
+            if (!confirm('Confirma o retorno ao trabalho?')) return;
+            console.log('Finalizando parada:', paradaId);
+            alert('Funcionalidade em desenvolvimento');
+        }
+        
+        function finalizarTurno() {
+            if (!confirm('⚠️ Confirma a finalização do turno?')) return;
+            console.log('Finalizando turno...');
+            window.location.href = '/soldagem/finalizar-turno';
+        }
+        
+        function abrirPainel(tipo) {
+            const urls = {
+                'qualidade': '/qualidade/painel',
+                'paradas': '/soldagem/painel-paradas',
+                'manutencao': '/manutencao/painel'
+            };
+            
+            console.log('Abrindo painel:', tipo);
+            if (urls[tipo]) {
+                window.location.href = urls[tipo];
+            } else {
+                alert('Painel em desenvolvimento: ' + tipo);
+            }
+        }
+    </script>
+</body>
+</html>

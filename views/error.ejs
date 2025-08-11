@@ -1,20 +1,85 @@
-<% layout('layout') -%>
-
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-danger text-white text-center">
-                    <h4 class="mb-0">❌ <%= title %></h4>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Sistema OEE</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f8f9fa; 
+        }
+        .header-sistema { 
+            background: linear-gradient(135deg, #dc3545, #c82333); 
+            color: white; 
+            padding: 1rem 0; 
+            position: relative; 
+        }
+        .logo-empresa { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .status-conexao { 
+            position: absolute; 
+            top: 15px; 
+            right: 20px; 
+        }
+        .status-online { 
+            background-color: #28a745; 
+            color: white; 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <header class="header-sistema">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <div class="logo-empresa">
+                        <div style="background: white; color: #dc3545; padding: 5px 10px; border-radius: 5px; font-weight: bold;">
+                            SteelMast
+                        </div>
+                        <h3 class="mb-0">Sistema de Apontamento OEE</h3>
+                    </div>
                 </div>
-                <div class="card-body text-center">
-                    <p class="lead"><%= message %></p>
-                    <div class="mt-4">
-                        <a href="/" class="btn btn-primary">🏠 Voltar ao Início</a>
-                        <button onclick="history.back()" class="btn btn-secondary">⬅️ Voltar</button>
+            </div>
+            <div class="status-conexao">
+                <div class="status-online">● Online</div>
+                <% if (locals.usuario) { %>
+                    <a href="/soldagem/finalizar-turno" class="btn btn-outline-light btn-sm ms-2">🚪 SAIR</a>
+                <% } %>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white text-center">
+                            <h4 class="mb-0">❌ <%= title %></h4>
+                        </div>
+                        <div class="card-body text-center">
+                            <p class="lead"><%= message %></p>
+                            <div class="mt-4">
+                                <a href="/" class="btn btn-primary">🏠 Voltar ao Início</a>
+                                <button onclick="history.back()" class="btn btn-secondary">⬅️ Voltar</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </main>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
