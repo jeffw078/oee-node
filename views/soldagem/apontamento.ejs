@@ -1,0 +1,511 @@
+<!-- views/soldagem/apontamento.ejs -->
+<%- include('../layout', { title: 'Apontamento de Soldagem' }) %>
+
+<div class="container mt-3">
+    <!-- Saudação e relógio -->
+    <div class="saudacao-soldador">
+        <%= saudacao %>, <strong><%= soldador.nome_completo %>!</strong>
+    </div>
+    
+    <div class="relogio-display" id="relogioApontamento"></div>
+    
+    <% if (apontamentoAtivo) { %>
+        <!-- Processo em andamento -->
+        <div class="processo-ativo">
+            <h4>🔥 Soldagem em Andamento: <%= apontamentoAtivo.modulo_nome %></h4>
+            <hr>
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <strong>Pedido:</strong><br>
+                    <%= apontamentoAtivo.pedido_numero %>
+                </div>
+                <div class="col-md-3">
+                    <strong>Poste/Tubo:</strong><br>
+                    <%= apontamentoAtivo.numero_poste_tubo %>
+                </div>
+                <div class="col-md-3">
+                    <strong>Componente:</strong><br>
+                    <%= apontamentoAtivo.componente_nome %>
+                </div>
+                <div class="col-md-3">
+                    <strong>Início:</strong><br>
+                    <%= momento(apontamentoAtivo.inicio_processo).format('HH:mm:ss') %>
+                </div>
+            </div>
+            
+            <% if (apontamentoAtivo.diametro) { %>
+                <div class="mt-2">
+                    <strong>Diâmetro do Tubo:</strong> <%= apontamentoAtivo.diametro %> mm
+                </div>
+            <% } %>
+            
+            <div class="cronometro-display" id="cronometroDisplay">00:00:00</div>
+            
+            <!-- Botões de ação durante soldagem -->
+            <div class="row mt-4">
+                <div class="col-6">
+                    <button class="btn btn-success btn-lg w-100" onclick="finalizarComponente()">
+                        ✅ Finalizar Atividade
+                    </button>
+                </div>
+                <div class="col-6">
+                    <div class="row">
+                        <div class="col-4">
+                            <button class="btn btn-warning w-100" onclick="abrirPainel('paradas')">
+                                ⏸️ Pausa
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-info w-100" onclick="abrirPainel('qualidade')">
+                                🔍 Qualidade
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-secondary w-100" onclick="abrirPainel('manutencao')">
+                                🔧 Manutenção
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <% } else if (paradaAtiva) { %>
+        <!-- Parada ativa -->
+        <div class="processo-ativo bg-warning">
+            <h4>⏸️ Parada Ativa: <%= paradaAtiva.tipo_nome %></h4>
+            <hr>
+            <div class="cronometro-display text-warning" id="cronometroParada">00:00:00</div>
+            
+            <div class="mt-3">
+                <button class="btn btn-success btn-lg" onclick="finalizarParada(<%= paradaAtiva.id %>)">
+                    ▶️ Retomar Trabalho
+                </button>
+            </div>
+        </div>
+        
+    <% } else { %>
+        <!-- Seleção de módulos -->
+        <div class="text-center mb-4">
+            <h4>Selecione o módulo para iniciar:</h4>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="row">
+                    <% modulos.forEach(modulo => { %>
+                        <div class="col-sm-6 mb-3">
+                            <button class="btn btn-modulo w-100" 
+                                    onclick="selecionarModulo(<%= modulo.id %>, '<%= modulo.nome %>')">
+                                <%= modulo.nome %>
+                            </button>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botões secundários -->
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="col-4">
+                        <button class="btn btn-info w-100" onclick="abrirPainel('qualidade')">
+                            🔍 Qualidade
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-warning w-100" onclick="abrirPainel('paradas')">
+                            ⏸️ Parada
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-danger w-100" onclick="finalizarTurno()">
+                            🚪 Finalizar Turno
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } %>
+</div>
+
+<!-- Modal de seleção de pedido/tubo -->
+<div class="modal fade" id="modalPedidoTubo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">📋 Informações do Processo</h5>
+            </div>
+            <div class="modal-body">
+                <p>Módulo selecionado: <strong id="moduloSelecionado"></strong></p>
+                
+                <div class="mb-3">
+                    <label for="numeroPedido" class="form-label">Número do Pedido:</label>
+                    <input type="text" class="form-control" id="numeroPedido" placeholder="Ex: 5454">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="numeroPosteTubo" class="form-label">Número do Poste/Tubo:</label>
+                    <input type="text" class="form-control" id="numeroPosteTubo" placeholder="Ex: 1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarModulo()">Continuar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de componentes -->
+<div class="modal fade" id="modalComponentes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">🔧 Componentes do <span id="tituloModuloComponentes"></span></h5>
+                <button type="button" class="btn-close btn-close-white" onclick="voltarParaModulos()"></button>
+            </div>
+            <div class="modal-body">
+                <div id="gridComponentes" class="row">
+                    <!-- Componentes serão carregados aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de diâmetro -->
+<div class="modal fade" id="modalDiametro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">📏 Diâmetro do Tubo</h5>
+            </div>
+            <div class="modal-body">
+                <p>Componente: <strong id="componenteSelecionado"></strong></p>
+                
+                <div class="mb-3">
+                    <label for="diametroTubo" class="form-label">Diâmetro (mm):</label>
+                    <input type="number" class="form-control" id="diametroTubo" placeholder="Ex: 800" step="0.1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="voltarParaComponentes()">Voltar</button>
+                <button type="button" class="btn btn-success" onclick="iniciarComponenteComDiametro()">Iniciar Soldagem</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let moduloAtual = null;
+    let componenteAtual = null;
+    let dadosProcesso = {};
+    let inicioProcesso = null;
+    let inicioParada = null;
+    let intervaloCronometro = null;
+    
+    // Função para atualizar cronômetro
+    function atualizarCronometro() {
+        if (inicioProcesso) {
+            const agora = new Date();
+            const diff = agora - inicioProcesso;
+            const horas = Math.floor(diff / 3600000);
+            const minutos = Math.floor((diff % 3600000) / 60000);
+            const segundos = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('cronometroDisplay').textContent = 
+                `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+        
+        if (inicioParada) {
+            const agora = new Date();
+            const diff = agora - inicioParada;
+            const horas = Math.floor(diff / 3600000);
+            const minutos = Math.floor((diff % 3600000) / 60000);
+            const segundos = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('cronometroParada').textContent = 
+                `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    function selecionarModulo(id, nome) {
+        moduloAtual = { id, nome };
+        document.getElementById('moduloSelecionado').textContent = nome;
+        document.getElementById('numeroPedido').value = '';
+        document.getElementById('numeroPosteTubo').value = '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalPedidoTubo'));
+        modal.show();
+    }
+    
+    function confirmarModulo() {
+        const numeroPedido = document.getElementById('numeroPedido').value;
+        const numeroPosteTubo = document.getElementById('numeroPosteTubo').value;
+        
+        if (!numeroPedido || !numeroPosteTubo) {
+            alert('Preencha todos os campos');
+            return;
+        }
+        
+        dadosProcesso = {
+            modulo_id: moduloAtual.id,
+            pedido_numero: numeroPedido,
+            numero_poste_tubo: numeroPosteTubo
+        };
+        
+        // Fechar modal atual
+        bootstrap.Modal.getInstance(document.getElementById('modalPedidoTubo')).hide();
+        
+        // Carregar componentes
+        carregarComponentes();
+    }
+    
+    function carregarComponentes() {
+        mostrarLoading();
+        
+        fetch('/soldagem/api/iniciar-modulo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosProcesso)
+        })
+        .then(response => response.json())
+        .then(data => {
+            esconderLoading();
+            
+            if (data.success) {
+                document.getElementById('tituloModuloComponentes').textContent = data.modulo.nome;
+                
+                const grid = document.getElementById('gridComponentes');
+                grid.innerHTML = '';
+                
+                data.componentes.forEach(componente => {
+                    const col = document.createElement('div');
+                    col.className = 'col-sm-6 col-md-4 mb-3';
+                    
+                    const descricao = componente.considera_diametro ? '(Diâmetro do tubo)' : '';
+                    
+                    col.innerHTML = `
+                        <button class="btn btn-componente w-100" 
+                                onclick="selecionarComponente(${componente.id}, '${componente.nome}', ${componente.considera_diametro})">
+                            ${componente.nome}
+                            <br><small>${descricao}</small>
+                        </button>
+                    `;
+                    
+                    grid.appendChild(col);
+                });
+                
+                const modal = new bootstrap.Modal(document.getElementById('modalComponentes'));
+                modal.show();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            esconderLoading();
+            alert('Erro de conexão');
+        });
+    }
+    
+    function selecionarComponente(id, nome, consideraDiametro) {
+        componenteAtual = { id, nome, consideraDiametro };
+        
+        if (consideraDiametro) {
+            document.getElementById('componenteSelecionado').textContent = nome;
+            document.getElementById('diametroTubo').value = '';
+            
+            // Fechar modal de componentes
+            bootstrap.Modal.getInstance(document.getElementById('modalComponentes')).hide();
+            
+            // Abrir modal de diâmetro
+            const modal = new bootstrap.Modal(document.getElementById('modalDiametro'));
+            modal.show();
+        } else {
+            iniciarComponente();
+        }
+    }
+    
+    function iniciarComponenteComDiametro() {
+        const diametro = document.getElementById('diametroTubo').value;
+        
+        if (!diametro || diametro <= 0) {
+            alert('Digite um diâmetro válido');
+            return;
+        }
+        
+        dadosProcesso.diametro = parseFloat(diametro);
+        
+        // Fechar modal
+        bootstrap.Modal.getInstance(document.getElementById('modalDiametro')).hide();
+        
+        iniciarComponente();
+    }
+    
+    function iniciarComponente() {
+        const dadosCompletos = {
+            ...dadosProcesso,
+            componente_id: componenteAtual.id
+        };
+        
+        mostrarLoading();
+        
+        const requestData = {
+            tipo: 'iniciar_componente',
+            dados: dadosCompletos
+        };
+        
+        fazerRequisicao('/soldagem/api/iniciar-componente', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosCompletos)
+        }, requestData)
+        .then(data => {
+            esconderLoading();
+            
+            if (data.success) {
+                if (data.offline) {
+                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
+                }
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        });
+    }
+    
+    function finalizarComponente() {
+        if (!confirm('Confirma a finalização da atividade?')) return;
+        
+        mostrarLoading();
+        
+        const apontamentoId = <%= apontamentoAtivo ? apontamentoAtivo.id : 'null' %>;
+        
+        const requestData = {
+            tipo: 'finalizar_componente',
+            dados: { apontamento_id: apontamentoId }
+        };
+        
+        fazerRequisicao('/soldagem/api/finalizar-componente', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apontamento_id: apontamentoId })
+        }, requestData)
+        .then(data => {
+            esconderLoading();
+            
+            if (data.success) {
+                if (data.offline) {
+                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
+                } else {
+                    alert(`✅ Atividade finalizada!\nTempo real: ${data.tempo_real} min\nEficiência: ${data.eficiencia}%`);
+                }
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        });
+    }
+    
+    function abrirPainel(tipo) {
+        const urls = {
+            'qualidade': '/qualidade/painel',
+            'paradas': '/soldagem/painel-paradas',
+            'manutencao': '/manutencao/painel'
+        };
+        
+        window.location.href = urls[tipo];
+    }
+    
+    function finalizarParada(paradaId) {
+        if (!confirm('Confirma o retorno ao trabalho?')) return;
+        
+        mostrarLoading();
+        
+        const requestData = {
+            tipo: 'finalizar_parada',
+            dados: { parada_id: paradaId }
+        };
+        
+        fazerRequisicao('/soldagem/api/finalizar-parada', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parada_id: paradaId })
+        }, requestData)
+        .then(data => {
+            esconderLoading();
+            
+            if (data.success) {
+                if (data.offline) {
+                    alert('Dados salvos offline. Serão sincronizados quando a conexão retornar.');
+                } else {
+                    alert(`✅ Parada finalizada!\nDuração: ${data.duracao_minutos.toFixed(1)} minutos`);
+                }
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        });
+    }
+    
+    function finalizarTurno() {
+        if (!confirm('⚠️ Confirma a finalização do turno?')) return;
+        
+        mostrarLoading();
+        
+        fetch('/soldagem/finalizar-turno', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            esconderLoading();
+            
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            esconderLoading();
+            alert('Erro de conexão');
+        });
+    }
+    
+    function voltarParaModulos() {
+        bootstrap.Modal.getInstance(document.getElementById('modalComponentes')).hide();
+    }
+    
+    function voltarParaComponentes() {
+        bootstrap.Modal.getInstance(document.getElementById('modalDiametro')).hide();
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalComponentes'));
+        modal.show();
+    }
+    
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configurar cronômetros se houver processo/parada ativa
+        <% if (apontamentoAtivo) { %>
+            inicioProcesso = new Date('<%= apontamentoAtivo.inicio_processo %>');
+            setInterval(atualizarCronometro, 1000);
+            atualizarCronometro();
+        <% } %>
+        
+        <% if (paradaAtiva) { %>
+            inicioParada = new Date('<%= paradaAtiva.inicio %>');
+            setInterval(atualizarCronometro, 1000);
+            atualizarCronometro();
+        <% } %>
+        
+        // Atualizar relógio
+        function atualizarRelogio() {
+            document.getElementById('relogioApontamento').textContent = moment().format('HH:mm:ss');
+        }
+        setInterval(atualizarRelogio, 1000);
+        atualizarRelogio();
+    });
+</script>
